@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh_cn">
+<head>
+    <meta charset="utf-8">
+    <title></title>
+    <script src="http://cdn.bootcss.com/d3/3.5.17/d3.js"></script>
+</head>
+<body style="text-align: center;">
+<h2>全国5A级景区分布</h2>
+<script>
+//准备画布
+var width = 1336, height = 700
+var svg = d3.select("body")
+    .append("svg")
+    .attr("width", width)
+    .attr("height", height) 
+//设置投影
+var projection = d3.geo.mercator()
+        .translate([width / 2, height / 2])
+        .center([105, 38]).scale(800);
+var path = d3.geo.path().projection(projection);
+var g = svg.append('g').call(d3.behavior.zoom()
+    .scaleExtent([1, 20])
+    .on("zoom", zoom));
+
+//读取地图文件，画出path
+d3.json("http://oe3hv1l98.bkt.clouddn.com/china.geo.json",
+    function(json){
+        g.selectAll("path")
+            .data(json.features)
+            .enter().append("path")
+            .attr("d", path)
+            .attr('fill', 'rgba(204,204,204,0.81)')
+            .attr('stroke', 'rgba(204,255,255,1)')
+            .attr('stroke-width', 1)
+            .on("mouseover",function(d,i){
+                d3.select(this)
+                    .attr("fill",'rgba(0,204,255,0.61)');
+            })
+            .on("mouseout",function(d,i){
+                d3.select(this)
+                    .attr("fill",'rgba(204,204,204,0.81)');
+        });
+        datas = json.features
+        for (var i = datas.length - 1; i >= 0; i--) {
+            city = datas[i]['properties']['name']
+            geo = datas[i]['properties']['cp']
+            position = projection(geo)
+            x = position[0]
+            y = position[1]
+            g.append("text")
+                .attr("x", x - 12)
+                .attr("y", y + 12)
+                .attr("font-size", 12)
+                .attr("fill", "rgba(66,66,66,0.8)")
+                .html(city)
+        }
+});
+
+
+//读取我们的旅游数据
+d3.json("http://localhost:5000/",
+    function(json){
+        datas = json.data
+        for (var i = datas.length - 1; i >= 0; i--) {
+            city = datas[i][0];
+            lat = datas[i][1];
+            lon = datas[i][2];
+            date_pub = datas[i][3];
+            position = projection([lat,lon]);
+            x = position[0];
+            y = position[1];
+            g.append("circle")
+                .attr("cx", x)
+                .attr("cy", y)
+                .attr("r", function(){
+                    if(date_pub == "不详"){
+                        return 3
+                    }else{
+                        return 5
+                    }
+                })
+                .attr("fill", function(){
+                    if(date_pub == "不详"){
+                        return "rgba(0,153,51,0.62)"
+                    }else{
+                        return "rgba(153,0,51,0.62)"
+                    }
+                    
+                })
+                .attr("attr-city", city)
+                .attr("attr-x", x)
+                .attr("attr-y", y)
+                .attr("attr-date", date_pub)
+                .on("mouseover", function(){
+                    x = d3.select(this).attr("attr-x");
+                    y = d3.select(this).attr("attr-y");
+                    city = d3.select(this).attr("attr-city");
+                    date_pub = d3.select(this).attr("attr-date");
+                    g.append("g").append("text")
+                        .attr("x", x)
+                        .attr("y", y)
+                        .attr("font-size", 12)
+                        .attr("fill", "rgba(0,0,0,1)")
+                        .html(city)
+                }).on("mouseout", function(){
+                    d3.select("g").select("g").remove();
+                })
+        }
+});
+
+function zoom(){
+    g.attr("transform", "translate(" + 
+            d3.event.translate + ")scale(" +
+            d3.event.scale +")");
+}
+</script>
+
+</body>
+</html>
